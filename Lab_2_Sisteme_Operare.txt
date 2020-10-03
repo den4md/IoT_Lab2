@@ -1,0 +1,36 @@
+Lab 2. Sisteme de Operare
+Definire Problema
+Realizarea unei aplicații pentru MCU care va rula minim 3 task-uri in doua versiuni - Secvential si cu FreeRTOS
+
+Aplicația va rula minim 3 task-uri printre care 
+
+Button Led - Schimbare stare LED la detecția unei apăsări pe buton.
+un al doilea Led Intermitent în faza în care LED-ul de la primul Task e stins
+Incrementare/decrementare valoare a unei variabile la apăsarea a doua butoane care va reprezenta numărul de recurențe/timp în care ledul de la al doilea task se va afla într-o stare
+Task-ul de Idle se va utiliza pentru afișarea stărilor din program, cum ar fi, afișare stare LED, și afișare mesaj la detecția apăsării butoanelor, o implementare fiind ca la apăsarea butonului sa se seteze o variabila, iar la afișare mesaj - resetare, implementând mecanismul provider/consumer. 
+ 
+
+Indicații pentru implementare
+1. sa se implementeze comunicarea intre Taskuri ca provider consumer, adica:
+
+  - task-ul care generează date, provider, stochează rezultatele într-o variabila globala/semnal
+  - task-ul care utilizează aceste date, consumer, citește aceasta variabila/semnal.
+de ex: task de UI (LCD sau Serial) preia informația din niște variabile-semnale globale și raportează
+
+ 2. A se urma principiile prezentate la curs Sisteme Secvențiale 
+
+  - stabilirea rezonabila a recurentei  pentru a diminua incarcarea procesorului
+  - stabilirea ofsetului, intru a activa în ordinea cuvenita task urile
+ 3: Task-ul de raportare pentru Secvențial cu utilizare STDIO printf() catre LCD va fi rulat in bucla infinita/IDLE deoarece este bazat pe un spin lock și ar putea bloca întreruperile  deci secvențial clasic - printf & delay in main loop, in FreeRtos - un task separat.
+
+ 4. Pentru Versiune cu FreeRtos, a se recomandarile sistemul
+
+Pontaj:
+ nota 5 - simpla aplicație de demonstrare sistem secvențial si FreeRTOS
++0.5 - pentru fiecare task secvențial și FreeRTOS (3 x 0.5 x 2 = 3.0)
++1.0 - Pentru improvizarea unui Task suplimentar implementând o sarcina diferita de cea de la laborator
++1.0 - pentru demonstrarea probelor de implementare fizica
+penalități
+-1 - penalizare pentru fiecare săptămâna întârziere de la deadline
+-1 - penalizare pentru nerespectare format raport
+-1 - pentru NE-utilizare STDIO pentru raportare mesaje la LCD
