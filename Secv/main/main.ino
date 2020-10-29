@@ -13,21 +13,21 @@ typedef void (*Task) ();
 #define BUTTON_ON LOW
 #define BUTTON_OFF HIGH
 
-#define RS 13
-#define EN 12
-#define D4 11
-#define D5 10
-#define D6 9
-#define D7 8
+#define RS 12
+#define EN 11
+#define D4 5
+#define D5 4
+#define D6 3
+#define D7 2
 
 #define LCD_X 16
 #define LCD_Y 2
 
-#define FIRST_LED_PIN 7
-#define FIRST_BUTTON_PIN 6
-#define SECOND_LED_PIN 5
-#define SECOND_BUTTON_UP_PIN 4
-#define SECOND_BUTTON_DOWN_PIN 3
+#define FIRST_LED_PIN A5
+#define FIRST_BUTTON_PIN A0
+#define SECOND_LED_PIN A4
+#define SECOND_BUTTON_UP_PIN A1
+#define SECOND_BUTTON_DOWN_PIN A2
 
 #define BUTTON_IDLE 0
 #define BUTTON_PRESSED_OR_NOISE 1

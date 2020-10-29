@@ -8,26 +8,27 @@
 
 typedef void (*Task) (void *parameters);
 
-#define LED_ON LOW
-#define LED_OFF HIGH
+#define LED_ON HIGH
+#define LED_OFF LOW
+
 #define BUTTON_ON LOW
 #define BUTTON_OFF HIGH
 
-#define RS 13
-#define EN 12
-#define D4 11
-#define D5 10
-#define D6 9
-#define D7 8
+#define RS 12
+#define EN 11
+#define D4 5
+#define D5 4
+#define D6 3
+#define D7 2
 
 #define LCD_X 16
 #define LCD_Y 2
 
-#define FIRST_LED_PIN 7
-#define FIRST_BUTTON_PIN 6
-#define SECOND_LED_PIN 5
-#define SECOND_BUTTON_UP_PIN 4
-#define SECOND_BUTTON_DOWN_PIN 3
+#define FIRST_LED_PIN A5
+#define FIRST_BUTTON_PIN A0
+#define SECOND_LED_PIN A4
+#define SECOND_BUTTON_UP_PIN A1
+#define SECOND_BUTTON_DOWN_PIN A2
 
 #define BUTTON_IDLE 0
 #define BUTTON_PRESSED_OR_NOISE 1
@@ -49,7 +50,7 @@ typedef void (*Task) (void *parameters);
 #define THIRD_TASK_DELAY_MS 100
 #define FOURTH_TASK_DELAY_MS 100
 #define FIFTH_TASK_DELAY_MS 30
-// #define NUM_OF_USED_WORDS 39  // 75 words == 300 bytes; 300 bytes * 5 tasks == 1500 bytes of RAM, actual program has 1528 free RAM
+// #define NUM_OF_USED_WORDS 39
 
 int firstLedState = LED_OFF;
 int firstButtonState = BUTTON_IDLE;
@@ -268,7 +269,7 @@ const char* const taskNames[numOfTasks] =
 
 int *taskWords[numOfTasks]=
 {
-  768, 768, 768, 768, 768
+  768, 768, 768, 768, 768 // 768 words/task * 4 bytes/word * 5 task = 15 KB
 };
 
 void setup()
