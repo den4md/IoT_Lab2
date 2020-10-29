@@ -8,9 +8,8 @@
 
 typedef void (*Task) (void *parameters);
 
-#define LED_ON HIGH
-#define LED_OFF LOW
-
+#define LED_ON LOW
+#define LED_OFF HIGH
 #define BUTTON_ON LOW
 #define BUTTON_OFF HIGH
 
@@ -269,7 +268,7 @@ const char* const taskNames[numOfTasks] =
 
 int *taskWords[numOfTasks]=
 {
-  39, 32, 39, 39, 30
+  768, 768, 768, 768, 768
 };
 
 void setup()
