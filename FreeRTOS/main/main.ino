@@ -1,34 +1,34 @@
-#include <stdio.h>
-#include <Arduino_FreeRTOS.h>
-#include <semphr.h>
+//#include <stdio.h>
+//#include <Arduino_FreeRTOS.h>
+#include <freertos/task.h>
+#include <freertos/semphr.h>
 
 #include "lcd.h"
 #include "led.h"
 #include "button.h"
 
 typedef void (*Task) (void *parameters);
+#define LED_ON LOW
+#define LED_OFF HIGH
 
-#define LED_ON HIGH
-#define LED_OFF LOW
+#define BUTTON_ON HIGH
+#define BUTTON_OFF LOW
 
-#define BUTTON_ON LOW
-#define BUTTON_OFF HIGH
-
-#define RS 12
-#define EN 11
-#define D4 5
+#define RS 15
+#define EN 2
+#define D4 0
 #define D5 4
-#define D6 3
-#define D7 2
+#define D6 16
+#define D7 17
 
 #define LCD_X 16
 #define LCD_Y 2
 
-#define FIRST_LED_PIN A5
-#define FIRST_BUTTON_PIN A0
-#define SECOND_LED_PIN A4
-#define SECOND_BUTTON_UP_PIN A1
-#define SECOND_BUTTON_DOWN_PIN A2
+#define FIRST_LED_PIN 32
+#define FIRST_BUTTON_PIN 26
+#define SECOND_LED_PIN 33
+#define SECOND_BUTTON_UP_PIN 25
+#define SECOND_BUTTON_DOWN_PIN 27
 
 #define BUTTON_IDLE 0
 #define BUTTON_PRESSED_OR_NOISE 1
@@ -38,11 +38,11 @@ typedef void (*Task) (void *parameters);
 #define SECOND_LED_MIN 400
 #define SECOND_LED_MAX 2000
 
-#define FIRST_LED_ON "Led-1 ON"
-#define FIRST_LED_OFF "Led-1 OFF"
+#define FIRST_LED_ON "Led-1 ON     "
+#define FIRST_LED_OFF "Led-1 OFF    "
 #define FIRST_BUTTON_PRESSED "Btn-1 PRESSED"
-#define SECOND_LED_ON "Led-2 ON"
-#define SECOND_LED_OFF "Led-2 OFF"
+#define SECOND_LED_ON "Led-2 ON     "
+#define SECOND_LED_OFF "Led-2 OFF    "
 #define SECOND_BUTTON_UP_PRESSED "Btn-2 PRESSED"
 #define SECOND_BUTTON_DOWN_PRESSED "Btn-3 PRESSED"
 
@@ -52,7 +52,7 @@ typedef void (*Task) (void *parameters);
 #define FIFTH_TASK_DELAY_MS 30
 // #define NUM_OF_USED_WORDS 39
 
-int firstLedState = LED_OFF;
+int firstLedState = LED_ON;
 int firstButtonState = BUTTON_IDLE;
 int secondLedState = LED_OFF;
 int secondButtonUpState = BUTTON_IDLE;
@@ -64,7 +64,17 @@ bool hasNewString = false;
 
 TaskHandle_t *BlockTaskHandle = NULL;  // First LED should suspend/resume the seccond
 SemaphoreHandle_t mutex;
-int secondLedIntervalMS = 1000;
+int secondLedIntervalMS = 2000;
+
+
+void myPrintf(const char* cstring)
+{
+  while (*cstring != '\0')
+  {
+    lcd_put_char(*cstring, NULL);
+    ++cstring;
+  }
+}
 
 void clearOutputStrings(char* string)
 {
@@ -128,123 +138,138 @@ int switchLedState(int ledState)
 
 void FirstTask(void *parameters)  // check if FIRST_BUTTON is pressed
 {
-  if (digitalRead(FIRST_BUTTON_PIN) == BUTTON_ON)
+  while(true)
   {
-    if (firstButtonState == BUTTON_IDLE)
+    if (digitalRead(FIRST_BUTTON_PIN) == BUTTON_ON)
     {
-      firstButtonState = BUTTON_PRESSED_OR_NOISE;
+      if (firstButtonState == BUTTON_IDLE)
+      {
+        firstButtonState = BUTTON_PRESSED_OR_NOISE;
+      }
+      else if (firstButtonState == BUTTON_PRESSED_OR_NOISE)
+      {
+        firstButtonState = BUTTON_HOLD;
+        firstLedState = switchLedState(firstLedState);
+        digitalWrite(FIRST_LED_PIN, firstLedState);
+        addOutput(FIRST_BUTTON_PRESSED);
+        while (xSemaphoreTake(mutex, 0) == pdFALSE) {}
+        addOutput(firstLedState == LED_ON ? FIRST_LED_ON : FIRST_LED_OFF);
+//        if (firstLedState == LED_OFF)
+//        {
+//          vTaskResume(*BlockTaskHandle);
+//        }
+//        else
+//        {
+//          vTaskSuspend(*BlockTaskHandle);
+//        }
+        xSemaphoreGive(mutex);
+      }
     }
-    else if (firstButtonState == BUTTON_PRESSED_OR_NOISE)
+    else
     {
-      firstButtonState = BUTTON_HOLD;
-      firstLedState = switchLedState(firstLedState);
-      digitalWrite(FIRST_LED_PIN, firstLedState);
-//      addOutput(FIRST_BUTTON_PRESSED);
-      while (xSemaphoreTake(mutex, 0) == pdFALSE) {}
-      addOutput(firstLedState == LED_ON ? FIRST_LED_ON : FIRST_LED_OFF);
-
-      if (firstLedState == LED_OFF)
-      {
-        vTaskResume(*BlockTaskHandle);
-      }
-      else
-      {
-        vTaskSuspend(*BlockTaskHandle);
-      }
-      xSemaphoreGive(mutex);
+      firstButtonState = BUTTON_IDLE;
     }
+  
+    vTaskDelay(pdMS_TO_TICKS(FIRST_TASK_DELAY_MS));
   }
-  else
-  {
-    firstButtonState = BUTTON_IDLE;
-  }
-
-  vTaskDelay(pdMS_TO_TICKS(FIRST_TASK_DELAY_MS));
 }
 
 void SecondTask(void *parameters) // check if state of SECOND_LED need to be switched
 {
-  if (firstLedState == LED_OFF)
+  while(true)
   {
-    secondLedState = switchLedState(secondLedState);
-    digitalWrite(SECOND_LED_PIN, secondLedState);
-    while (xSemaphoreTake(mutex, 0) == pdFALSE) {}
-    addOutput(secondLedState == LED_ON ? SECOND_LED_ON : SECOND_LED_OFF);
-    xSemaphoreGive(mutex);
+    if (firstLedState == LED_OFF)
+    {
+      secondLedState = switchLedState(secondLedState);
+      digitalWrite(SECOND_LED_PIN, secondLedState);
+      while (xSemaphoreTake(mutex, 0) == pdFALSE) {}
+      addOutput(secondLedState == LED_ON ? SECOND_LED_ON : SECOND_LED_OFF);
+      xSemaphoreGive(mutex);
+    }
+    
+    vTaskDelay(pdMS_TO_TICKS(secondLedIntervalMS));
   }
-  vTaskDelay(pdMS_TO_TICKS(secondLedIntervalMS));
 }
 
 void ThirdTask(void *parameters)  // check if SECOND_BUTTON_UP is pressed
 {
-  if (digitalRead(SECOND_BUTTON_UP_PIN) == BUTTON_ON)
+  while(true)
   {
-    if (secondButtonUpState == BUTTON_IDLE)
+    if (digitalRead(SECOND_BUTTON_UP_PIN) == BUTTON_ON)
     {
-      secondButtonUpState = BUTTON_PRESSED_OR_NOISE;
-    }
-    else if (secondButtonUpState == BUTTON_PRESSED_OR_NOISE)
-    {
-      secondButtonUpState = BUTTON_HOLD;
-      if (secondLedIntervalMS < SECOND_LED_MAX)
+      if (secondButtonUpState == BUTTON_IDLE)
       {
-        secondLedIntervalMS += SECOND_LED_INCREMENTOR;
+        secondButtonUpState = BUTTON_PRESSED_OR_NOISE;
       }
-      while (xSemaphoreTake(mutex, 0) == pdFALSE) {}
-      addOutput(SECOND_BUTTON_UP_PRESSED);
-      xSemaphoreGive(mutex);
+      else if (secondButtonUpState == BUTTON_PRESSED_OR_NOISE)
+      {
+        secondButtonUpState = BUTTON_HOLD;
+        if (secondLedIntervalMS < SECOND_LED_MAX)
+        {
+          secondLedIntervalMS += SECOND_LED_INCREMENTOR;
+        }
+        while (xSemaphoreTake(mutex, 0) == pdFALSE) {}
+        addOutput(SECOND_BUTTON_UP_PRESSED);
+        xSemaphoreGive(mutex);
+      }
     }
+    else
+    {
+      secondButtonUpState = BUTTON_IDLE;
+    }
+    vTaskDelay(pdMS_TO_TICKS(THIRD_TASK_DELAY_MS));
   }
-  else
-  {
-    secondButtonUpState = BUTTON_IDLE;
-  }
-  vTaskDelay(pdMS_TO_TICKS(THIRD_TASK_DELAY_MS));
 }
 
 void FourthTask(void *parameters)  // check if SECOND_BUTTON_DOWN is pressed
 {
-  if (digitalRead(SECOND_BUTTON_DOWN_PIN) == BUTTON_ON)
+  while(true)
   {
-    if (secondButtonDownState == BUTTON_IDLE)
+    if (digitalRead(SECOND_BUTTON_DOWN_PIN) == BUTTON_ON)
     {
-      secondButtonDownState = BUTTON_PRESSED_OR_NOISE;
-    }
-    else if (secondButtonDownState == BUTTON_PRESSED_OR_NOISE)
-    {
-      secondButtonDownState = BUTTON_HOLD;
-      if (secondLedIntervalMS > SECOND_LED_MIN)
+      if (secondButtonDownState == BUTTON_IDLE)
       {
-        secondLedIntervalMS -= SECOND_LED_INCREMENTOR;
+        secondButtonDownState = BUTTON_PRESSED_OR_NOISE;
       }
-      while (xSemaphoreTake(mutex, 0) == pdFALSE) {}
-      addOutput(SECOND_BUTTON_DOWN_PRESSED);
-      xSemaphoreGive(mutex);
+      else if (secondButtonDownState == BUTTON_PRESSED_OR_NOISE)
+      {
+        secondButtonDownState = BUTTON_HOLD;
+        if (secondLedIntervalMS > SECOND_LED_MIN)
+        {
+          secondLedIntervalMS -= SECOND_LED_INCREMENTOR;
+        }
+        while (xSemaphoreTake(mutex, 0) == pdFALSE) {}
+        addOutput(SECOND_BUTTON_DOWN_PRESSED);
+        xSemaphoreGive(mutex);
+      }
     }
+    else
+    {
+      secondButtonDownState = BUTTON_IDLE;
+    }
+    vTaskDelay(pdMS_TO_TICKS(FOURTH_TASK_DELAY_MS));
   }
-  else
-  {
-    secondButtonDownState = BUTTON_IDLE;
-  }
-  vTaskDelay(pdMS_TO_TICKS(FOURTH_TASK_DELAY_MS));
 }
 
 void FifthTask(void *parameters)  // output
 {
-  if (hasNewString)
+  while(true)
   {
-    while (xSemaphoreTake(mutex, 0) == pdFALSE) {}
-    clear_lcd();
-    for (int i = 0; i < LCD_Y; ++i)
+    if (hasNewString)
     {
-      lcd->setCursor(0, i);
-      printf(outputStrings[i]);
+      while (xSemaphoreTake(mutex, 0) == pdFALSE) {}
+      clear_lcd();
+      for (int i = 0; i < LCD_Y; ++i)
+      {
+        lcd->setCursor(0, i);
+        myPrintf(outputStrings[i]);
+      }
+  
+      hasNewString = false;
+      xSemaphoreGive(mutex);
     }
-
-    hasNewString = false;
-    xSemaphoreGive(mutex);
+    vTaskDelay(pdMS_TO_TICKS(FIFTH_TASK_DELAY_MS));
   }
-  vTaskDelay(pdMS_TO_TICKS(FIFTH_TASK_DELAY_MS));
 }
 
 Task tasks[numOfTasks] = 
@@ -267,24 +292,26 @@ const char* const taskNames[numOfTasks] =
   "FifthTask"
 };
 
-int *taskWords[numOfTasks]=
+int taskWords[numOfTasks]=
 {
-  768, 768, 768, 768, 768 // 768 words/task * 4 bytes/word * 5 task = 15 KB
+  2000, 2000, 2000, 2000, 2000 // 2000 words/task * 4 bytes/word * 5 task = 20000 B
 };
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
   lcd = new LiquidCrystal(RS, EN, D4, D5, D6, D7);
   begin_lcd(lcd, LCD_X, LCD_Y);
   outputStringsInit();
   
-  FILE* stream = fdevopen(lcd_put_char, NULL);
-  stderr = stdout = stdin = stream;
+//  FILE* stream = fdevopen(lcd_put_char, NULL);
+//  stderr = stdout = stdin = stream;
   
   LedInit(FIRST_LED_PIN);
+  digitalWrite(FIRST_LED_PIN, firstLedState);
   ButtonInit(FIRST_BUTTON_PIN);
   LedInit(SECOND_LED_PIN);
+  digitalWrite(SECOND_LED_PIN, secondLedState);
   ButtonInit(SECOND_BUTTON_UP_PIN);
   ButtonInit(SECOND_BUTTON_DOWN_PIN);
 
